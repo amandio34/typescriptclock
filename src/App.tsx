@@ -1,0 +1,17 @@
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import Home from "./pages/Home";
+import CityPage from "./pages/CityPage";
+
+const App: React.FC = () => {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/city/:id" element={<CityPage />} />
+      </Routes>
+    </Router>
+  );
+};
+
+export default App;
