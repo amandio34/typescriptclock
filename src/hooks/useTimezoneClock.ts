@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 
 /**
  * useTimezoneClock
- * - Ger en formaterad tidssträng för en given tidszon och uppdaterar regelbundet.
+ * - Returns a formatted time string for a given timezone and updates it regularly.
  * - showSeconds: true/false (default true)
  * - twelveHour: true/false (default false -> 24h)
  */
@@ -11,6 +11,7 @@ export function useTimezoneClock(
   timezone: string,
   { showSeconds = true, twelveHour = false } = {}
 ) {
+  // State for the formatted time string
   const [timeString, setTimeString] = useState<string>("");
 
   useEffect(() => {
@@ -19,6 +20,7 @@ export function useTimezoneClock(
       return;
     }
 
+    // Formats the current time for the given timezone
     function formatNow() {
       const now = new Date();
       const options: Intl.DateTimeFormatOptions = {
@@ -35,12 +37,12 @@ export function useTimezoneClock(
         });
         setTimeString(fmt.format(now));
       } catch {
-        // Om ogiltig timezone: visa tom sträng
+        // If invalid timezone: show empty string
         setTimeString("");
       }
     }
 
-    // kör direkt och sedan interval
+    // Run immediately and then on interval
     formatNow();
     const interval = showSeconds ? 1000 : 60_000;
     const id = setInterval(formatNow, interval);

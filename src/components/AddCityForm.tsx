@@ -1,42 +1,69 @@
-import React, { useState, useEffect } from "react";
+// src/components/AddCityForm.tsx
+import React, { useEffect, useRef, useState } from "react";
 import type { City } from "../types";
 
 interface Props {
   onAdd: (city: City) => void;
   timezones?: string[] | null;
+  defaultTimezone?: string | null;
+  existingCities?: City[];
 }
 
-export default function AddCityForm({ onAdd, timezones }: Props) {
+export default function AddCityForm({
+  onAdd,
+  timezones,
+  defaultTimezone = null,
+  existingCities = [],
+}: Props) {
+  // State for form fields
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
-  const [timezone, setTimezone] = useState("");
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState(defaultTimezone ?? "");
+  const [timezone, setTimezone] = useState(defaultTimezone ?? "");
   const [filtered, setFiltered] = useState<string[]>([]);
+  const dropdownRef = useRef<HTMLUListElement | null>(null);
 
-  // Filtrera tidszoner när query ändras
+  // Set default timezone if provided
+  useEffect(() => {
+    if (defaultTimezone) {
+      setQuery(defaultTimezone);
+      setTimezone(defaultTimezone);
+    }
+  }, [defaultTimezone]);
+
+  // Filter timezone list based on query
   useEffect(() => {
     if (!timezones || query.trim() === "") {
       setFiltered([]);
       return;
     }
     const q = query.toLowerCase();
-    setFiltered(
-      timezones.filter((tz) => tz.toLowerCase().includes(q)).slice(0, 10) // max 10 träffar
-    );
+    setFiltered(timezones.filter((tz) => tz.toLowerCase().includes(q)).slice(0, 10));
   }, [query, timezones]);
 
+  // Close dropdown if clicking outside
+  useEffect(() => {
+    function onDoc(e: MouseEvent) {
+      if (!dropdownRef.current) return;
+      if (!(e.target instanceof Node)) return;
+      if (!dropdownRef.current.contains(e.target)) {
+        setFiltered([]);
+      }
+    }
+    document.addEventListener("mousedown", onDoc);
+    return () => document.removeEventListener("mousedown", onDoc);
+  }, []);
+
+  // Generate unique ID for new city
   function makeId() {
-    if (typeof crypto !== "undefined" && (crypto as any).randomUUID)
-      return (crypto as any).randomUUID();
+    if (typeof crypto !== "undefined" && (crypto as any).randomUUID) return (crypto as any).randomUUID();
     return `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
   }
 
+  // Handle form submission
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!name.trim() || !timezone.trim()) {
-      return alert("Ange både stad och tidszon");
-    }
-
+    if (!name.trim() || !timezone.trim()) return alert("Ange både stadens namn och tidszon.");
     const city: City = {
       id: makeId(),
       name: name.trim(),
@@ -44,21 +71,25 @@ export default function AddCityForm({ onAdd, timezones }: Props) {
       timezone,
     };
 
+    // Optional: check for duplicates
+    const exists = existingCities.some(
+      (c) => c.name.toLowerCase() === city.name.toLowerCase() || c.timezone === city.timezone
+    );
+    if (exists && !confirm("Liknande stad/tidszon finns redan. Vill du lägga till ändå?")) return;
+
     onAdd(city);
     setName("");
     setCountry("");
-    setTimezone("");
     setQuery("");
+    setTimezone("");
+    setFiltered([]);
   };
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col items-center gap-4 w-full"
-    >
-      {/* Stad */}
-      <div className="w-full">
-        <label className="block text-sm text-slate-600 mb-1">Stadsnamn</label>
+    <form onSubmit={handleSubmit} className="flex flex-col items-center gap-4 w-full">
+      {/* City name input */}
+      <fieldset className="w-full border-0 p-0 m-0">
+        <legend className="block text-sm text-slate-600 mb-1">Stadsnamn</legend>
         <input
           value={name}
           onChange={(e) => setName(e.target.value)}
@@ -66,38 +97,42 @@ export default function AddCityForm({ onAdd, timezones }: Props) {
           placeholder="t.ex. Stockholm"
           required
         />
-      </div>
+      </fieldset>
 
-      {/* Land */}
-      <div className="w-full">
-        <label className="block text-sm text-slate-600 mb-1">
-          Land (valfritt)
-        </label>
+      {/* Country input (optional) */}
+      <fieldset className="w-full border-0 p-0 m-0">
+        <legend className="block text-sm text-slate-600 mb-1">Land (valfritt)</legend>
         <input
           value={country}
           onChange={(e) => setCountry(e.target.value)}
           className="w-full p-2 border rounded"
           placeholder="t.ex. Sverige"
         />
-      </div>
+      </fieldset>
 
-      {/* Autocomplete för tidszon */}
-      <div className="w-full relative">
-        <label className="block text-sm text-slate-600 mb-1">
-          Tidszon (sök)
-        </label>
-        <input
-          value={query}
-          onChange={(e) => {
-            setQuery(e.target.value);
-            setTimezone(e.target.value);
-          }}
-          className="w-full p-2 border rounded"
-          placeholder="Börja skriva..."
-        />
+      {/* Timezone search and dropdown */}
+      <section className="w-full relative">
+        <label className="block text-sm text-slate-600 mb-1">Tidszon (sök)</label>
+        <div className="flex gap-2">
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setTimezone(e.target.value);
+            }}
+            className="flex-1 p-2 border rounded"
+            placeholder="Börja skriva..."
+            aria-label="Sök tidszon"
+            autoComplete="off"
+          />
+          <button type="button" onClick={() => { setQuery(""); setTimezone(""); setFiltered([]); }} className="px-3 py-2 border rounded text-sm">
+            Rensa
+          </button>
+        </div>
 
+        {/* Dropdown with filtered timezones */}
         {filtered.length > 0 && (
-          <ul className="absolute z-10 bg-white border rounded mt-1 w-full max-h-40 overflow-y-auto shadow-lg">
+          <ul ref={dropdownRef} className="absolute z-10 bg-white border rounded mt-1 w-full max-h-48 overflow-y-auto shadow-lg text-left">
             {filtered.map((tz) => (
               <li
                 key={tz}
@@ -113,14 +148,14 @@ export default function AddCityForm({ onAdd, timezones }: Props) {
             ))}
           </ul>
         )}
-      </div>
+      </section>
 
-      <button
-        type="submit"
-        className="px-4 py-2 bg-sky-600 text-white rounded hover:bg-sky-700"
-      >
-        Lägg till stad
-      </button>
+      {/* Submit button */}
+      <section>
+        <button type="submit" className="px-4 py-2 bg-sky-600 text-white rounded hover:bg-sky-700">
+          Lägg till stad
+        </button>
+      </section>
     </form>
   );
 }

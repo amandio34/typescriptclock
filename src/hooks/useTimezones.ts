@@ -3,10 +3,10 @@ import { useEffect, useState } from "react";
 
 /**
  * Local-first useTimezones
- * - Först: försök läsa /timezones.json (public)
- * - Annars: försök remote en gång (icke-blockerande)
- * - Slutligen: inbyggd DEFAULT_TIMEZONES
- * - Sparar cache i localStorage (24h)
+ * - First: try to read /timezones.json (public)
+ * - Otherwise: try remote fetch once (non-blocking)
+ * - Finally: use built-in DEFAULT_TIMEZONES
+ * - Caches in localStorage (24h)
  */
 
 export const DEFAULT_TIMEZONES = [
@@ -24,9 +24,12 @@ export const DEFAULT_TIMEZONES = [
   "Australia/Sydney",
 ];
 
+// Remote API for live data
+const remoteUrl = "https://worldtimeapi.org/api/timezone";
+
 const TIMEZONES_CACHE_KEY = "timezones_cache_v1";
 const TIMEZONES_CACHE_TS_KEY = "timezones_cache_ts_v1";
-const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 timmar
+const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 export function useTimezones() {
   const [timezones, setTimezones] = useState<string[]>([]);
@@ -37,7 +40,7 @@ export function useTimezones() {
     let mounted = true;
 
     async function tryLocalFirst() {
-      // 1) Läs cache först
+      // 1) Try cache first
       const cached = localStorage.getItem(TIMEZONES_CACHE_KEY);
       const ts = localStorage.getItem(TIMEZONES_CACHE_TS_KEY);
       const cacheAge = ts ? Date.now() - Number(ts) : Infinity;
@@ -57,7 +60,7 @@ export function useTimezones() {
         }
       }
 
-      // 2) Försök läs lokal public/timezones.json (snabb och offline-friendly)
+      // 2) Try to read local public/timezones.json (fast and offline-friendly)
       try {
         const resLocal = await fetch("/timezones.json");
         if (resLocal.ok) {
@@ -73,12 +76,12 @@ export function useTimezones() {
           return;
         }
       } catch {
-        // ignored - fortsätt till remote/fallback
+        // ignored - continue to remote/fallback
       }
 
-      // 3) Försök remote EN gång (icke-spammigt). Om fail -> inbyggd fallback.
+      // 3) Try remote fetch ONCE. If fail -> use built-in fallback.
       try {
-        const res = await fetch("/timezones.json", { cache: "no-store" });
+        const res = await fetch(remoteUrl, { cache: "no-store" });
         if (res.ok) {
           const json = (await res.json()) as string[];
           if (!mounted) return;
@@ -94,28 +97,29 @@ export function useTimezones() {
           throw new Error(`HTTP ${res.status}`);
         }
       } catch (err: any) {
-        // remote misslyckades; använd fallback
+        // remote failed; use fallback
         if (!mounted) return;
-        // försök igen att använda cache-fast eller default
         if (cached) {
           try {
             const parsed = JSON.parse(cached) as string[];
             setTimezones(parsed);
-            setError(`Kunde inte hämta remote: ${(err && err.message) || "okänt"}. Använder cache.`);
+            setError(`Could not fetch remote: ${(err && err.message) || "unknown"}. Using cache.`);
             setLoading(false);
             return;
           } catch {}
         }
 
-        // slutgiltig inbyggd fallback
+        // Final built-in fallback
         setTimezones(DEFAULT_TIMEZONES);
-        setError(`Kunde inte hämta tidszoner: ${(err && err.message) || "okänt"}. Använder inbyggd fallback.`);
+        setError(`Could not fetch timezones: ${(err && err.message) || "unknown"}. Using built-in fallback.`);
         setLoading(false);
       }
     }
 
     tryLocalFirst();
-    return () => { mounted = false; };
+    return () => {
+      mounted = false;
+    };
   }, []);
 
   return { timezones, loading, error };

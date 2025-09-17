@@ -43,28 +43,33 @@ import type { City } from "../types";
 import { useTimezoneClock } from "../hooks/useTimezoneClock";
 
 const CityPage: React.FC = () => {
+  // Get city id from route params
   const { id } = useParams<{ id: string }>();
+  // Load cities from localStorage
   const [cities] = useLocalStorage<City[]>("cities", []);
+  // Find the city by id
   const city = cities.find((c) => c.id === id);
 
+  // If city not found, show message
   if (!city) return <p>Staden hittades inte</p>;
 
+  // Get formatted time string for the city's timezone
   const time = useTimezoneClock(String(city.timezone), { showSeconds: true, twelveHour: false });
 
   return (
-    <div
+    <main
       className="min-h-screen flex items-center justify-center"
       style={{
         backgroundImage: `url(${city.imageUrl || "/default.jpg"})`,
         backgroundSize: "cover",
       }}
     >
-      <div className="bg-black/60 p-8 rounded-lg text-center text-white">
+      <section className="bg-black/60 p-8 rounded-lg text-center text-white">
         <h1 className="text-3xl font-bold">{city.name}</h1>
         <p className="text-2xl mt-3">{time || "–"}</p>
         <Link to="/" className="mt-4 inline-block text-sm underline">⬅ Tillbaka</Link>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 };
 

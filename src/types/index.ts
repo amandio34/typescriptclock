@@ -1,7 +1,11 @@
 // src/types/index.ts
+
+// No <div> or DOM elements are used in this file; only type definitions.
+
+/** Import global styles if needed (unusual in a types file, but harmless) */
 import './index.css';
 
-// Vanliga tidszoner (union type, utökningsbar)
+// Common timezones as a union type (easy to extend)
 export type TimezoneId =
   | "Europe/Stockholm"
   | "America/New_York"
@@ -9,10 +13,10 @@ export type TimezoneId =
   | "Europe/London"
   | "America/Los_Angeles";
 
-// Typ för digital/analog vy
+// Type for digital/analog clock mode
 export type ClockMode = "digital" | "analog";
 
-// Interface för en stad
+// City interface: describes a city object
 export interface City {
   id: string;
   name: string;
@@ -25,27 +29,33 @@ export interface City {
   };
 }
 
-// Interface för klockinställningar
+// Clock settings interface
 export interface ClockSettings {
   mode: ClockMode;
   showSeconds: boolean;
   twelveHourFormat: boolean;
 }
 
-// Sparad state
+// State stored in localStorage
 export interface StoredState {
   cities: City[];
   settings: ClockSettings;
 }
 
-// API-response för timeapi.io
+// API response from worldtimeapi.org (fields are optional for flexibility)
 export interface TimezoneResponse {
-  dateTime: string;
-  timeZone: string;
-  year?: number;
-  month?: number;
-  day?: number;
-  hour?: number;
-  minute?: number;
-  seconds?: number;
+  abbreviation?: string;
+  client_ip?: string;
+  datetime?: string;      // ISO string
+  utc_datetime?: string;  // sometimes named this
+  day_of_week?: number;
+  day_of_year?: number;
+  dst?: boolean;
+  dst_offset?: number;
+  raw_offset?: number;
+  timezone?: string;
+  unixtime?: number;
+  utc_offset?: string;
+  week_number?: number;
 }
+

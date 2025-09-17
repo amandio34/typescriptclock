@@ -16,14 +16,17 @@ export default function SearchableTimezoneInput({
   placeholder = "Sök tidszon (t.ex. Stockholm eller Europe/Stockholm)",
   maxSuggestions = 8,
 }: Props) {
+  // Local state for the input query and dropdown state
   const [query, setQuery] = useState(value || "");
   const [open, setOpen] = useState(false);
   const [highlight, setHighlight] = useState(0);
-  const ref = useRef<HTMLDivElement | null>(null);
+  const ref = useRef<HTMLElement | null>(null);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
+  // Sync local query state with external value prop
   useEffect(() => setQuery(value || ""), [value]);
 
+  // Compute filtered suggestions based on the query
   const suggestions = useMemo(() => {
     if (!timezones) return [];
     const q = (query || "").trim().toLowerCase();
@@ -35,6 +38,7 @@ export default function SearchableTimezoneInput({
     return filtered.slice(0, maxSuggestions);
   }, [timezones, query, maxSuggestions]);
 
+  // Close dropdown when clicking outside the component
   useEffect(() => {
     function onDoc(e: MouseEvent) {
       if (!ref.current) return;
@@ -44,6 +48,7 @@ export default function SearchableTimezoneInput({
     return () => document.removeEventListener("mousedown", onDoc);
   }, []);
 
+  // Keyboard navigation for the dropdown
   const onKeyDown: React.KeyboardEventHandler<HTMLInputElement> = (e) => {
     if (!open && (e.key === "ArrowDown" || e.key === "ArrowUp")) {
       setOpen(true);
@@ -65,6 +70,7 @@ export default function SearchableTimezoneInput({
     }
   };
 
+  // Select a timezone from the dropdown
   function selectTimezone(tz: string) {
     setQuery(tz);
     onChange(tz);
@@ -73,27 +79,32 @@ export default function SearchableTimezoneInput({
   }
 
   return (
-    <div ref={ref} className="relative">
-      <input
-        ref={inputRef}
-        value={query}
-        onChange={(e) => {
-          setQuery(e.target.value);
-          onChange(e.target.value);
-          setOpen(true);
-          setHighlight(0);
-        }}
-        onFocus={() => setOpen(true)}
-        onKeyDown={onKeyDown}
-        placeholder={placeholder}
-        className="mt-1 p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-sky-200"
-        aria-autocomplete="list"
-        aria-expanded={open}
-        aria-controls="tz-listbox"
-      />
+    <section ref={ref} className="relative">
+      {/* Input field for searching timezones */}
+      <fieldset className="border-0 p-0 m-0">
+        <legend className="sr-only">Timezone Search</legend>
+        <input
+          ref={inputRef}
+          value={query}
+          onChange={(e) => {
+            setQuery(e.target.value);
+            onChange(e.target.value);
+            setOpen(true);
+            setHighlight(0);
+          }}
+          onFocus={() => setOpen(true)}
+          onKeyDown={onKeyDown}
+          placeholder={placeholder}
+          className="mt-1 p-2 border rounded w-full focus:outline-none focus:ring-2 focus:ring-sky-200"
+          aria-autocomplete="list"
+          aria-expanded={open}
+          aria-controls="tz-listbox"
+        />
+      </fieldset>
 
+      {/* Dropdown with suggestions */}
       {open && (
-        <div className="absolute z-30 mt-1 w-full bg-white border rounded shadow max-h-72 overflow-auto text-sm">
+        <section className="absolute z-30 mt-1 w-full bg-white border rounded shadow max-h-72 overflow-auto text-sm">
           {suggestions.length > 0 ? (
             <ul
               role="listbox"
@@ -116,17 +127,17 @@ export default function SearchableTimezoneInput({
                       highlight === i ? "bg-sky-50" : "hover:bg-slate-50"
                     }`}
                   >
-                    <div className="font-medium">{cityLabel}</div>
-                    <div className="text-xs text-slate-500">{tz}</div>
+                    <output className="font-medium">{cityLabel}</output>
+                    <output className="text-xs text-slate-500">{tz}</output>
                   </li>
                 );
               })}
             </ul>
           ) : (
-            <div className="p-3 text-sm text-slate-500">Inga förslag</div>
+            <output className="p-3 text-sm text-slate-500">Inga förslag</output>
           )}
-        </div>
+        </section>
       )}
-    </div>
+    </section>
   );
 }
