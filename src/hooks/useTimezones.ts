@@ -2,38 +2,31 @@
 import { useEffect, useState } from "react";
 
 /**
- * Robust useTimezones:
- * - använder cache i localStorage med timestamp
- * - om cache är färsk (default 24h) -> använd cache och hoppa över remote-fetch
- * - annars försök remote (timeout + retries) i bakgrunden, utan spam i konsolen
- * - fallback till public/timezones.json eller DEFAULT_TIMEZONES
+ * Local-first useTimezones
+ * - Först: försök läsa /timezones.json (public)
+ * - Annars: försök remote en gång (icke-blockerande)
+ * - Slutligen: inbyggd DEFAULT_TIMEZONES
+ * - Sparar cache i localStorage (24h)
  */
 
 export const DEFAULT_TIMEZONES = [
   "Europe/Stockholm",
   "Europe/London",
+  "Europe/Paris",
+  "Europe/Berlin",
   "America/New_York",
   "America/Los_Angeles",
+  "America/Chicago",
+  "America/Toronto",
   "Asia/Tokyo",
   "Asia/Shanghai",
-  "Australia/Sydney"
+  "Asia/Singapore",
+  "Australia/Sydney",
 ];
 
 const TIMEZONES_CACHE_KEY = "timezones_cache_v1";
 const TIMEZONES_CACHE_TS_KEY = "timezones_cache_ts_v1";
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000; // 24 timmar
-
-async function fetchWithTimeout(url: string, timeout = 5000, signal?: AbortSignal) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), timeout);
-  try {
-    const res = await fetch(url, { signal: signal ?? controller.signal });
-    clearTimeout(timer);
-    return res;
-  } finally {
-    clearTimeout(timer);
-  }
-}
 
 export function useTimezones() {
   const [timezones, setTimezones] = useState<string[]>([]);
@@ -43,44 +36,50 @@ export function useTimezones() {
   useEffect(() => {
     let mounted = true;
 
-    // Läs cache + timestamp
-    const cached = localStorage.getItem(TIMEZONES_CACHE_KEY);
-    const ts = localStorage.getItem(TIMEZONES_CACHE_TS_KEY);
-    const cacheAge = ts ? Date.now() - Number(ts) : Infinity;
-    const cacheIsFresh = cached && ts && cacheAge < CACHE_TTL_MS;
+    async function tryLocalFirst() {
+      // 1) Läs cache först
+      const cached = localStorage.getItem(TIMEZONES_CACHE_KEY);
+      const ts = localStorage.getItem(TIMEZONES_CACHE_TS_KEY);
+      const cacheAge = ts ? Date.now() - Number(ts) : Infinity;
+      const cacheIsFresh = cached && ts && cacheAge < CACHE_TTL_MS;
 
-    if (cached) {
+      if (cached && cacheIsFresh) {
+        try {
+          const parsed = JSON.parse(cached) as string[];
+          if (mounted) {
+            setTimezones(parsed);
+            setLoading(false);
+            setError(null);
+            return;
+          }
+        } catch {
+          // ignore malformed cache
+        }
+      }
+
+      // 2) Försök läs lokal public/timezones.json (snabb och offline-friendly)
       try {
-        const parsed = JSON.parse(cached) as string[];
-        if (mounted) {
-          setTimezones(parsed);
+        const resLocal = await fetch("/timezones.json");
+        if (resLocal.ok) {
+          const jsonLocal = (await resLocal.json()) as string[];
+          if (!mounted) return;
+          try {
+            localStorage.setItem(TIMEZONES_CACHE_KEY, JSON.stringify(jsonLocal));
+            localStorage.setItem(TIMEZONES_CACHE_TS_KEY, String(Date.now()));
+          } catch {}
+          setTimezones(jsonLocal);
           setLoading(false);
+          setError(null);
+          return;
         }
       } catch {
-        // malformed cache -> ignore
+        // ignored - fortsätt till remote/fallback
       }
-    }
 
-    // Om cache är färsk: hoppa över remote-fetch helt (sparar nätverk + inga errors)
-    if (cacheIsFresh) {
-      return () => { mounted = false; };
-    }
-
-    // Annars: försök en bakgrundsrefresh (men tysta console.warn för nätverksfel)
-    (async () => {
-      const remoteUrl = "https://worldtimeapi.org/api/timezone";
-      const localPublicUrl = "/timezones.json";
-      const maxRetries = 2;
-      let attempt = 0;
-      let lastError: string | null = null;
-
-      while (attempt <= maxRetries && mounted) {
-        try {
-          const res = await fetchWithTimeout(remoteUrl, 5000);
-          if (!res.ok) {
-            lastError = `HTTP ${res.status}`;
-            throw new Error(lastError);
-          }
+      // 3) Försök remote EN gång (icke-spammigt). Om fail -> inbyggd fallback.
+      try {
+        const res = await fetch("/timezones.json", { cache: "no-store" });
+        if (res.ok) {
           const json = (await res.json()) as string[];
           if (!mounted) return;
           try {
@@ -91,40 +90,31 @@ export function useTimezones() {
           setError(null);
           setLoading(false);
           return;
-        } catch (err: any) {
-          lastError = err?.message ?? String(err);
-          // ingen console.warn här — vi sparar fel i state istället
-          const delay = Math.pow(2, attempt) * 400;
-          await new Promise((r) => setTimeout(r, delay));
-          attempt++;
+        } else {
+          throw new Error(`HTTP ${res.status}`);
         }
-      }
-
-      // remote misslyckades -> försök lokal public fallback
-      try {
-        const resLocal = await fetchWithTimeout(localPublicUrl, 3000);
-        if (!resLocal.ok) throw new Error(`Local public HTTP ${resLocal.status}`);
-        const jsonLocal = (await resLocal.json()) as string[];
-        if (!mounted) return;
-        try {
-          localStorage.setItem(TIMEZONES_CACHE_KEY, JSON.stringify(jsonLocal));
-          localStorage.setItem(TIMEZONES_CACHE_TS_KEY, String(Date.now()));
-        } catch {}
-        setTimezones(jsonLocal);
-        setError(`Kunde inte hämta remote ( ${lastError ?? "okänt"} ). Använder lokal fallback.`);
-        setLoading(false);
-        return;
       } catch (err: any) {
-        lastError = err?.message ?? String(err);
+        // remote misslyckades; använd fallback
+        if (!mounted) return;
+        // försök igen att använda cache-fast eller default
+        if (cached) {
+          try {
+            const parsed = JSON.parse(cached) as string[];
+            setTimezones(parsed);
+            setError(`Kunde inte hämta remote: ${(err && err.message) || "okänt"}. Använder cache.`);
+            setLoading(false);
+            return;
+          } catch {}
+        }
+
+        // slutgiltig inbyggd fallback
+        setTimezones(DEFAULT_TIMEZONES);
+        setError(`Kunde inte hämta tidszoner: ${(err && err.message) || "okänt"}. Använder inbyggd fallback.`);
+        setLoading(false);
       }
+    }
 
-      // slutgiltig inbyggd fallback
-      if (!mounted) return;
-      setTimezones(DEFAULT_TIMEZONES);
-      setError(`Kunde inte hämta tidszoner: ${lastError ?? "okänt fel"}. Använder inbyggd fallback.`);
-      setLoading(false);
-    })();
-
+    tryLocalFirst();
     return () => { mounted = false; };
   }, []);
 

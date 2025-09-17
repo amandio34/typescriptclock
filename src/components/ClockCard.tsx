@@ -1,66 +1,66 @@
+// import React, { useState } from "react";
+// import type { City, ClockMode } from "../types";
+// import { useWorldTimeApi } from "../hooks/useWorldTimeApi";
+
+// interface Props {
+//   city: City;
+// }
+
+// const ClockCard: React.FC<Props> = ({ city }) => {
+//   const { data, loading, error } = useWorldTimeApi(city.timezone);
+//   const [mode, setMode] = useState<ClockMode>("digital");
+
+//   if (loading) return <p>Laddar tid...</p>;
+//   if (error || !data) return <p>Kunde inte ladda tid</p>;
+
+//   const date = new Date(data.dateTime);
+
+//   return (
+//     <div className="flex flex-col items-center space-y-2">
+//       <h3 className="text-xl font-semibold">{city.name}</h3>
+//       {mode === "digital" ? (
+//         <p className="text-2xl font-mono">{date.toLocaleTimeString()}</p>
+//       ) : (
+//         <p>[Analog klocka kan ritas här]</p>
+//       )}
+//       <button
+//         onClick={() => setMode(mode === "digital" ? "analog" : "digital")}
+//         className="px-3 py-1 bg-sky-600 text-white rounded hover:bg-sky-700 text-sm"
+//       >
+//         Växla vy
+//       </button>
+//     </div>
+//   );
+// };
+
+// export default ClockCard;
+
 // src/components/ClockCard.tsx
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import type { City, ClockMode } from "../types";
-import { useWorldTimeApi } from "../hooks/useWorldTimeApi";
-import { Link } from "react-router-dom";
-import { useInterval } from "../hooks/useInterval";
-import { useLocalStorage } from "../hooks/useLocalStorage";
-import AnalogClock from "./AnalogClock";
+import { useTimezoneClock } from "../hooks/useTimezoneClock";
 
 interface Props {
   city: City;
 }
 
 const ClockCard: React.FC<Props> = ({ city }) => {
-  const { data, loading, error } = useWorldTimeApi(city.timezone);
-
-  const storageKey = `clock_mode_${city.id}`;
-  const [savedMode, setSavedMode] = useLocalStorage<ClockMode>(storageKey, "digital");
-  const [mode, setMode] = useState<ClockMode>(savedMode ?? "digital");
-
-  const [now, setNow] = useState<Date>(() => new Date());
-
-  useEffect(() => {
-    if (data?.dateTime) {
-      setNow(new Date(data.dateTime));
-    }
-  }, [data?.dateTime]);
-
-  useInterval(() => {
-    setNow((prev) => new Date(prev.getTime() + 1000));
-  }, 1000);
-
-  useEffect(() => {
-    setSavedMode(mode);
-  }, [mode, setSavedMode]);
-
-  if (loading) return <div className="p-4">Laddar tid...</div>;
-  if (error || !data) return <div className="p-4">Kunde inte ladda tid</div>;
+  const [mode, setMode] = useState<ClockMode>("digital");
+  const time = useTimezoneClock(String(city.timezone), { showSeconds: true, twelveHour: false });
 
   return (
-    <article className="clock-card bg-white p-4 rounded shadow">
-      <header className="flex items-baseline justify-between">
-        <h3 className="text-lg font-medium">{city.name}</h3>
-        <div className="text-sm text-slate-500">{data.timeZone}</div>
-      </header>
+    <article className="clock-card bg-white rounded-lg p-4 shadow-sm flex flex-col items-center space-y-3">
+      <h3 className="text-lg font-medium">{city.name}</h3>
+      <div className="text-2xl font-mono">{mode === "digital" ? (time || "–") : "[Analog klocka]"}</div>
 
-      <div className="my-3">
-        {mode === "digital" ? (
-          <div className="text-2xl font-mono">{now.toLocaleTimeString()}</div>
-        ) : (
-          <AnalogClock date={now} size={120} />
-        )}
-      </div>
-
-      <footer className="flex gap-3 items-center">
+      <div className="flex gap-2">
         <button
           onClick={() => setMode(mode === "digital" ? "analog" : "digital")}
-          className="px-3 py-1 bg-sky-600 text-white rounded"
+          className="px-3 py-1 bg-sky-600 text-white rounded hover:bg-sky-700 text-sm"
         >
           Växla vy
         </button>
-        <Link to={`/city/${city.id}`} className="text-sm text-slate-600 ml-auto">Detaljvy →</Link>
-      </footer>
+      </div>
     </article>
   );
 };

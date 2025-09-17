@@ -3,73 +3,97 @@ import AddCityForm from "../components/AddCityForm";
 import ClockCard from "../components/ClockCard";
 import { useLocalStorage } from "../hooks/useLocalStorage";
 import { useTimezones } from "../hooks/useTimezones";
-import SearchableTimezoneInput from "../components/SearchableTimezoneInput";
 import type { City } from "../types";
 
 const Home: React.FC = () => {
   const [cities, setCities] = useLocalStorage<City[]>("cities", []);
   const { timezones, loading, error } = useTimezones();
 
-  // Den tidszon som väljs i sidopanelen (kopplas till formuläret)
-  const [selectedTimezone, setSelectedTimezone] = useState<string>("");
+  // För sökstad
+  const [search, setSearch] = useState("");
+  const [selectedTimezone, setSelectedTimezone] = useState<string | null>(null);
 
   const handleAdd = (city: City) => {
     setCities([...cities, city]);
-    // efter tillägg kan vi nollställa valet om du vill:
-    // setSelectedTimezone("");
   };
 
+  // Filtrera för sök dropdown
+  const filtered =
+    search.trim() && timezones
+      ? timezones.filter((tz) =>
+          tz.toLowerCase().includes(search.toLowerCase())
+        ).slice(0, 8)
+      : [];
+
   return (
-    <main className="min-h-screen bg-slate-50 text-slate-900 p-6">
-      <header className="max-w-4xl mx-auto mb-8">
-        <h1 className="text-3xl font-semibold">World Clock</h1>
-        <p className="text-sm text-slate-500 mt-1">Håll koll på tider runt om i världen.</p>
-      </header>
+    <main className="min-h-screen flex items-center justify-center bg-gradient-to-br from-sky-100 via-white to-sky-200 p-6">
+      <div className="bg-white rounded-2xl shadow-lg p-8 w-full max-w-2xl text-center space-y-8">
+        <header>
+          <h1 className="text-3xl font-bold mb-2">🌍 World Clock</h1>
+          <p className="text-slate-600">
+            Håll koll på tider runt om i världen.
+          </p>
+        </header>
 
-      <section className="max-w-4xl mx-auto grid gap-6 md:grid-cols-3">
-        {/* Sidopanel: sökbar tidszon */}
-        <aside className="md:col-span-1 bg-white rounded-lg p-4 shadow-sm">
-          <h2 className="font-medium mb-2">Hitta tidszon</h2>
-
+        {/* --- Sök stad --- */}
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold">Sök stad</h2>
           {loading && <p className="text-sm text-slate-500">Laddar tidszoner…</p>}
-          {error && <div className="mb-2 text-sm text-amber-700">Notis: {error}</div>}
+          {error && <p className="text-sm text-amber-600">{error}</p>}
 
-          <p className="text-sm text-slate-500 mb-3">Skriv en stad eller tidszon — välj från förslag.</p>
+          <div className="relative">
+            <input
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              placeholder="Börja skriva en världsdel/stad..."
+              className="w-full p-2 border rounded"
+            />
+            {filtered.length > 0 && (
+              <ul className="absolute z-10 bg-white border rounded mt-1 w-full max-h-40 overflow-y-auto shadow-lg text-left">
+                {filtered.map((tz) => (
+                  <li
+                    key={tz}
+                    onClick={() => {
+                      setSelectedTimezone(tz);
+                      setSearch(tz);
+                    }}
+                    className="px-3 py-2 cursor-pointer hover:bg-sky-100"
+                  >
+                    {tz}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </section>
 
-          <SearchableTimezoneInput
-            timezones={timezones}
-            value={selectedTimezone}
-            onChange={(tz) => setSelectedTimezone(tz)}
-            placeholder="Sök tidszon (t.ex. Stockholm eller Europe/Stockholm)"
-          />
+        {/* --- Lägg till stad --- */}
+        <section className="space-y-3">
+          <h2 className="text-xl font-semibold">Lägg till stad</h2>
+          <AddCityForm onAdd={handleAdd} timezones={timezones} />
+          <p className="text-xs text-slate-500">
+            Ange namn och tidszon för att spara staden.
+          </p>
+        </section>
 
-          <p className="mt-4 text-xs text-slate-400">Tips: välj en tidszon här för att snabbt fylla i formuläret.</p>
-        </aside>
-
-        {/* Form och stadskort */}
-        <article className="md:col-span-2 space-y-6">
-          <section className="bg-white rounded-lg p-4 shadow-sm">
-            <h2 className="font-medium mb-3">Lägg till stad</h2>
-            {/* Passar in timezones + initialTimezone så formuläret kan förifylla */}
-            <AddCityForm onAdd={handleAdd} timezones={timezones} initialTimezone={selectedTimezone} />
+        {/* --- Vald stad --- */}
+        {selectedTimezone && (
+          <section className="space-y-3">
+            <h2 className="text-xl font-semibold">Vald stad</h2>
+            <ClockCard
+              city={{
+                id: selectedTimezone,
+                name: search,
+                timezone: selectedTimezone,
+              }}
+            />
           </section>
+        )}
 
-          <section className="bg-white rounded-lg p-4 shadow-sm">
-            <h2 className="font-medium mb-3">Städer</h2>
-            <div className="city-grid grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {cities.length === 0 ? (
-                <p className="text-slate-500">Inga städer tillagda ännu.</p>
-              ) : (
-                cities.map((c) => <ClockCard key={c.id} city={c} />)
-              )}
-            </div>
-          </section>
-        </article>
-      </section>
-
-      <footer className="max-w-4xl mx-auto mt-8 text-xs text-slate-400">
-        <p>Data: timeapi.io (fall-back används vid nätverksfel)</p>
-      </footer>
+        <footer className="text-xs text-slate-400">
+          <p>Data: worldtimeapi.org (fall-back används vid nätverksfel)</p>
+        </footer>
+      </div>
     </main>
   );
 };

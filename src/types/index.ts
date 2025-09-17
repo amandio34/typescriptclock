@@ -1,22 +1,47 @@
 // src/types/index.ts
+import './index.css';
 
-// Byt ut enum mot union type
+// Vanliga tidszoner (union type, utökningsbar)
 export type TimezoneId =
   | "Europe/Stockholm"
   | "America/New_York"
-  | "Asia/Tokyo";
-// ...lägg till fler vid behov
+  | "Asia/Tokyo"
+  | "Europe/London"
+  | "America/Los_Angeles";
 
-// src/types/index.ts
-// ... behåll resten av dina typer ovanför
+// Typ för digital/analog vy
+export type ClockMode = "digital" | "analog";
+
+// Interface för en stad
+export interface City {
+  id: string;
+  name: string;
+  country?: string;
+  timezone: TimezoneId | string;
+  imageUrl?: string;
+  coords?: {
+    lat: number;
+    lng: number;
+  };
+}
+
+// Interface för klockinställningar
+export interface ClockSettings {
+  mode: ClockMode;
+  showSeconds: boolean;
+  twelveHourFormat: boolean;
+}
+
+// Sparad state
+export interface StoredState {
+  cities: City[];
+  settings: ClockSettings;
+}
 
 // API-response för timeapi.io
 export interface TimezoneResponse {
-  // fält som timeapi.io returnerar (minsta gemensamma nämnare)
-  dateTime: string;    // ex. "2025-09-14T20:37:45.1234567"
-  timeZone: string;    // ex. "Europe/Stockholm"
-
-  // valfria extra fält som timeapi.io också kan returnera
+  dateTime: string;
+  timeZone: string;
   year?: number;
   month?: number;
   day?: number;

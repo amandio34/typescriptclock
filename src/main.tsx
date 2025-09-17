@@ -1,10 +1,24 @@
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+// src/main.tsx
+import "./index.css";
+import React from "react";
+import { createRoot } from "react-dom/client";
+import type { Root } from "react-dom/client";
 
-createRoot(document.getElementById('root')!).render(
-  <StrictMode>
+import App from "./App";
+
+const container = document.getElementById("root");
+if (!container) throw new Error("Root container not found");
+
+declare global {
+  interface Window { __REACT_ROOT__?: Root; }
+}
+
+if (!window.__REACT_ROOT__) {
+  window.__REACT_ROOT__ = createRoot(container);
+}
+
+window.__REACT_ROOT__.render(
+  <React.StrictMode>
     <App />
-  </StrictMode>,
-)
+  </React.StrictMode>
+);
