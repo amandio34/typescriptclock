@@ -31,9 +31,8 @@ Projektet använder **timeapi.io** för att hämta tidszoner och tider. Nedan ä
 ## 📌 User stories
 1. Som användare vill jag kunna lägga till en stad för att se den lokala tiden.  
 2. Som användare vill jag kunna välja mellan digital och analog klocka för att se tiden på mitt sätt.  
-3. Som användare vill jag kunna öppna en stad i en detaljvy med bakgrundsbild.  
-4. Som användare vill jag att mina städer sparas i localStorage så jag slipper lägga in dem igen.  
-5. Som användare vill jag kunna ta bort en stad jag inte längre behöver.  
+3. Som användare vill jag att mina städer sparas i localStorage så jag slipper lägga in dem igen.  
+4. Som användare vill jag kunna ta bort en stad jag inte längre behöver.  
 
 ---
 
