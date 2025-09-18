@@ -4,6 +4,10 @@ import type { City } from "../types";
 
 interface Props {
   onAdd: (city: City) => void;
+  /**
+   * Optional list of timezones provided by parent.
+   * If absent, the component will fetch available zones from timeapi.io.
+   */
   timezones?: string[] | null;
   defaultTimezone?: string | null;
   existingCities?: City[];
@@ -11,19 +15,50 @@ interface Props {
 
 export default function AddCityForm({
   onAdd,
-  timezones,
+  timezones: tzFromProps,
   defaultTimezone = null,
   existingCities = [],
 }: Props) {
-  // State for form fields
+  // Form state
   const [name, setName] = useState("");
   const [country, setCountry] = useState("");
   const [query, setQuery] = useState(defaultTimezone ?? "");
   const [timezone, setTimezone] = useState(defaultTimezone ?? "");
+  const [timezones, setTimezones] = useState<string[]>(tzFromProps ?? []);
   const [filtered, setFiltered] = useState<string[]>([]);
   const dropdownRef = useRef<HTMLUListElement | null>(null);
 
-  // Set default timezone if provided
+  // If parent provides timezones later, update local list
+  useEffect(() => {
+    if (Array.isArray(tzFromProps) && tzFromProps.length > 0) {
+      setTimezones(tzFromProps);
+    }
+  }, [tzFromProps]);
+
+  // If no timezone list from props, fetch available zones once
+  useEffect(() => {
+    if (tzFromProps && tzFromProps.length > 0) return; // parent provided list -> skip fetch
+
+    let mounted = true;
+    async function loadTimezones() {
+      try {
+        const res = await fetch("https://timeapi.io/api/TimeZone/AvailableTimeZones", { cache: "no-store" });
+        if (!res.ok) throw new Error("Kunde inte hämta tidszoner");
+        const data = (await res.json()) as string[];
+        if (!mounted) return;
+        setTimezones(data);
+      } catch (err) {
+        // silently fail — component still works with manual input and fallback
+        console.error("Fel vid hämtning av tidszoner:", err);
+      }
+    }
+    loadTimezones();
+    return () => {
+      mounted = false;
+    };
+  }, [tzFromProps]);
+
+  // When defaultTimezone changes, set fields
   useEffect(() => {
     if (defaultTimezone) {
       setQuery(defaultTimezone);
@@ -125,14 +160,25 @@ export default function AddCityForm({
             aria-label="Sök tidszon"
             autoComplete="off"
           />
-          <button type="button" onClick={() => { setQuery(""); setTimezone(""); setFiltered([]); }} className="px-3 py-2 border rounded text-sm">
+          <button
+            type="button"
+            onClick={() => {
+              setQuery("");
+              setTimezone("");
+              setFiltered([]);
+            }}
+            className="px-3 py-2 border rounded text-sm"
+          >
             Rensa
           </button>
         </div>
 
         {/* Dropdown with filtered timezones */}
         {filtered.length > 0 && (
-          <ul ref={dropdownRef} className="absolute z-10 bg-white border rounded mt-1 w-full max-h-48 overflow-y-auto shadow-lg text-left">
+          <ul
+            ref={dropdownRef}
+            className="absolute z-10 bg-white border rounded mt-1 w-full max-h-48 overflow-y-auto shadow-lg text-left"
+          >
             {filtered.map((tz) => (
               <li
                 key={tz}

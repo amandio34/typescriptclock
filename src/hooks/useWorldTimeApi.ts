@@ -1,6 +1,6 @@
 // src/hooks/useWorldTimeApi.ts
 import { useEffect, useState } from "react";
-import type { TimezoneResponse } from "../types";
+import type { TimeApiResponse } from "../types";
 
 interface UseWorldTimeResult {
   time: Date | null;
@@ -10,7 +10,7 @@ interface UseWorldTimeResult {
 
 /**
  * Custom React hook to fetch and keep current time for a given timezone.
- * - Fetches from worldtimeapi.org.
+ * - Fetches from timeapi.io.
  * - Updates every 60 seconds.
  * - Handles loading and error state.
  */
@@ -22,32 +22,36 @@ export function useWorldTimeApi(timezone: string): UseWorldTimeResult {
   useEffect(() => {
     let mounted = true;
 
-    // Fetches the current time from the API and updates state
+    /** Fetch current time from timeapi.io */
     async function fetchTime() {
       setLoading(true);
       setError(null);
       try {
-        const res = await fetch(`https://worldtimeapi.org/api/timezone/${timezone}`, { cache: "no-store" });
+        // Example: https://timeapi.io/api/Time/current/zone?timeZone=Europe/Stockholm
+        const res = await fetch(
+          `https://timeapi.io/api/Time/current/zone?timeZone=${encodeURIComponent(timezone)}`,
+          { cache: "no-store" }
+        );
+
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const json = (await res.json()) as TimezoneResponse;
-        // Try to get ISO string from different possible fields
-        const iso =
-          json.datetime ??
-          json.utc_datetime ??
-          (json.unixtime ? new Date(json.unixtime * 1000).toISOString() : undefined);
+
+        const json = (await res.json()) as TimeApiResponse;
         if (!mounted) return;
-        setTime(iso ? new Date(iso) : null);
+
+        // Convert ISO string to Date
+        setTime(new Date(json.dateTime));
         setLoading(false);
       } catch (err: any) {
         if (!mounted) return;
-        setError(err?.message ?? "Okänt fel");
+        setError(err?.message ?? "Unknown error");
         setLoading(false);
       }
     }
 
     fetchTime();
-    // Set up interval to refetch every 60 seconds
+    // Refresh every 60s
     const id = setInterval(fetchTime, 60_000);
+
     return () => {
       mounted = false;
       clearInterval(id);

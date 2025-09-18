@@ -1,10 +1,5 @@
 // src/types/index.ts
 
-// No <div> or DOM elements are used in this file; only type definitions.
-
-/** Import global styles if needed (unusual in a types file, but harmless) */
-import './index.css';
-
 // Common timezones as a union type (easy to extend)
 export type TimezoneId =
   | "Europe/Stockholm"
@@ -42,20 +37,22 @@ export interface StoredState {
   settings: ClockSettings;
 }
 
-// API response from worldtimeapi.org (fields are optional for flexibility)
-export interface TimezoneResponse {
-  abbreviation?: string;
-  client_ip?: string;
-  datetime?: string;      // ISO string
-  utc_datetime?: string;  // sometimes named this
-  day_of_week?: number;
-  day_of_year?: number;
-  dst?: boolean;
-  dst_offset?: number;
-  raw_offset?: number;
-  timezone?: string;
-  unixtime?: number;
-  utc_offset?: string;
-  week_number?: number;
+/**
+ * Response from timeapi.io (only the useful fields we care about)
+ * Example: GET https://timeapi.io/api/Time/current/zone?timeZone=Europe/Stockholm
+ */
+export interface TimeApiResponse {
+  year: number;
+  month: number;
+  day: number;
+  hour: number;
+  minute: number;
+  seconds: number;
+  milliSeconds?: number;
+  dateTime: string; // ISO-like string, e.g. "2025-09-18T16:10:30"
+  date?: string;
+  time?: string;
+  timeZone: string;
+  dayOfWeek?: string;
+  dstActive?: boolean;
 }
-

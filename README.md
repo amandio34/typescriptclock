@@ -2,9 +2,9 @@
 
 Ett React + TypeScript-projekt där man kan hålla reda på lokala tider i olika städer runt om i världen.  
 Användaren kan lägga till städer, visa tiden både digitalt och analogt, samt öppna en detaljvy för varje stad.  
-Projektet använder `worldtimeapi.org` för att hämta tidszoner och tider. Nedan är länken till skissen.
+Projektet använder **timeapi.io** för att hämta tidszoner och tider. Nedan är länken till skissen.
 
-**Länk till skiss: https://www.figma.com/design/8LFCQkeG1MmtNXp6285GYw/Untitled?m=dev&t=htlcQjxdHNl11uqQ-1 **
+**Länk till skiss: https://www.figma.com/design/8LFCQkeG1MmtNXp6285GYw/Untitled?m=dev&t=htlcQjxdHNl11uqQ-1**
 
 ---
 
@@ -16,7 +16,7 @@ Projektet använder `worldtimeapi.org` för att hämta tidszoner och tider. Neda
 - Byggde komponenten `AddCityForm.tsx` där man kan skriva in stad, land och söka tidszon.  
 - Skapade hooken `useLocalStorage` för att spara städer lokalt i webbläsaren.  
 - Lade till lista av städer på startsidan där varje stad visas med en digital klocka.  
-- Kopplade på `worldtimeapi.org` så tider hämtas live.  
+- Kopplade på **timeapi.io** så tider hämtas live.  
 
 ### Vecka 2
 - Implementerade `ClockCard.tsx` med möjlighet att växla mellan **digital** och **analog** klocka.  
